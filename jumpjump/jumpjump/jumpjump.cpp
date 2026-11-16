@@ -97,8 +97,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
+   ///창 생성시 기본 값 설정(900X750)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, 0, 900, 750, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -121,6 +122,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //  WM_DESTROY  - 종료 메시지를 게시하고 반환합니다.
 //
 //
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -145,8 +147,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
+
+            ///배경색을 칠하기 위한 변수 선언
+            RECT bgPaint;
+
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+
+            ///배경색 칠하기 위한 브러시 생성
+            HBRUSH myBrush=CreateSolidBrush(RGB(173,216,230));
+            GetClientRect(hWnd,&bgPaint);   ///창 크기를 가져온다
+            FillRect(hdc, &bgPaint, myBrush);   ///myBrush로 가져온 창 크기를 채운다
+            DeleteObject(myBrush);  ///자원 해제
+
             EndPaint(hWnd, &ps);
         }
         break;
