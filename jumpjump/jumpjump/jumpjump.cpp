@@ -97,9 +97,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
 
-   ///창 생성시 기본 값 설정(900X750)
+   ///창 생성시 기본 값 설정(900X900)
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, 900, 750, nullptr, nullptr, hInstance, nullptr);
+      CW_USEDEFAULT, 0, 900, 900, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -123,16 +123,62 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 
+///배경색을 칠하기 위한 변수 선언
+RECT bgPaint;
+
+///실제 게임이 운영될 백그라운드 설정
+RECT bg = { 50,50,700,700 };
+
+///플레이어 구조체 설정
+RECT player = { 350,600,400,650 };
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_KEYDOWN:
+    {
+        switch (wParam)
+        {
+        case VK_LEFT:
+        {
+            ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
+            ///bg의 x좌표보다 작을 수 없다
+            if (bg.left < player.left) {
+                ///좌측 방향키 누를 시 좌측으로 5만큼 이동
+                player.left -= 5;
+                player.right -= 5;
+
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+        }
+        break;
+
+        case VK_RIGHT:
+        {
+            ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
+            ///bg의 x좌표보다 클 수 없다
+            if (bg.right > player.right) {
+                ///우측 방향키 누를 시 우측으로 5만큼 이동
+                player.left += 5;
+                player.right += 5;
+
+                InvalidateRect(hWnd, NULL, TRUE);
+            }
+        }
+        break;
+        }
+        break;
+    }
+    break;
     case WM_COMMAND:
         {
+
             int wmId = LOWORD(wParam);
             // 메뉴 선택을 구문 분석합니다:
             switch (wmId)
             {
+
             case IDM_ABOUT:
                 DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
                 break;
@@ -148,8 +194,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
 
-            ///배경색을 칠하기 위한 변수 선언
-            RECT bgPaint;
 
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
@@ -158,7 +202,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HBRUSH myBrush=CreateSolidBrush(RGB(173,216,230));
             GetClientRect(hWnd,&bgPaint);   ///창 크기를 가져온다
             FillRect(hdc, &bgPaint, myBrush);   ///myBrush로 가져온 창 크기를 채운다
-            DeleteObject(myBrush);  ///자원 해제
+            DeleteObject(myBrush);  ///배경색 브러시 자원 해제
+
+            ///게임 운영 구역 그리기 위한 펜 생성
+            HPEN bgPen = CreatePen(BS_SOLID, 2, RGB(0, 0, 0));
+            HPEN osPen = (HPEN)SelectObject(hdc, bgPen);
+            Rectangle(hdc, 50, 50, 700, 700);
+            SelectObject(hdc, osPen);
+            DeleteObject(bgPen);
+
+            HBRUSH playerBrush = CreateSolidBrush(RGB(200, 150, 80));
+            FillRect(hdc, &player, playerBrush);
+            DeleteObject(playerBrush); ///플레이어 브러시 자원 해제
+
+
 
             EndPaint(hWnd, &ps);
         }
