@@ -1,10 +1,11 @@
 ﻿// jumpjump.cpp : 애플리케이션에 대한 진입점을 정의합니다.
 //
-
 #include "framework.h"
 #include "jumpjump.h"
+#include <vector>
 
 #define MAX_LOADSTRING 100
+#define SET_CHECK_GRAVITY_TIMER 1
 
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
@@ -106,6 +107,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   ///중력이 발생할 수 있도록 타이머 설정(0.02초 단위로 메시지 생성)
+   SetTimer(hWnd, SET_CHECK_GRAVITY_TIMER, 20, NULL);
+
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -123,6 +127,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 //
 
+
+///중력을 설정합니다
+/// gravity->중력 가속도
+/// velocity->플레이어의 세로 방향 속도(player.top, player.bottom의 변화)
+/// 중력 구현
+/// 1.중력만큼 세로 속도를 증가시킨다
+/// 2.세로 속도만틈 플레이어 좌표를 아래로 이동시킨다
+///
+
+float gravity = 0.5;
+float velocityY = 0;
+
 ///배경색을 칠하기 위한 변수 선언
 RECT bgPaint;
 
@@ -130,12 +146,73 @@ RECT bgPaint;
 RECT bg = { 50,50,700,700 };
 
 ///플레이어 구조체 설정
-RECT player = { 350,600,400,650 };
+RECT player = { 350,400,400,450 };
+
+///발판 구조체 설정하기
+//RECT platform = { 250, 500, 450, 520 };
+
+struct Platform
+{
+    RECT position;
+    int type;       ///0=일반발판 1=이동발판 2=깨짐발판
+};
+
+std::vector<Platform> platforms;
+//Platform platform = { { 250, 300, 350, 320 },0 };
+
+void AddPlatform(int x, int y, int type)
+{
+    ///높이 및 너비
+    int width = 0;
+    int height = 0;
+
+    /// 1. type에 따라 발판 너비와 높이 결정
+    if (type == 0) {
+        width = 70;
+        height = 20;
+    }
+    else if (type == 1) {
+        width = 80;
+        height = 20;
+    }
+    else if (type == 2) {
+        width = 85;
+        height = 20;
+    }
+
+    /// 2. position 구성
+    Platform newPlatform;
+
+
+
+    // 3. platforms에 추가
+}
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
+    case WM_TIMER:
+    {
+        ///SET_CHECK_GRAVITY_TIMER에서 수행할 작업
+        velocityY += gravity;
+
+        if (player.bottom + (int)velocityY < bg.bottom - 2) {
+            player.top += (int)velocityY;
+            player.bottom += (int)velocityY;
+        }
+        else {
+            // 경계선에 정확히 맞춤
+            player.bottom = bg.bottom - 2;
+            player.top = player.bottom - 50;
+            velocityY = 0;
+        }
+
+        InvalidateRect(hWnd, NULL, FALSE);
+        
+    }
+    break;
     case WM_KEYDOWN:
     {
         switch (wParam)
@@ -149,7 +226,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 player.left -= 5;
                 player.right -= 5;
 
-                InvalidateRect(hWnd, NULL, TRUE);
+                InvalidateRect(hWnd, NULL, FALSE);
             }
         }
         break;
@@ -163,7 +240,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 player.left += 5;
                 player.right += 5;
 
-                InvalidateRect(hWnd, NULL, TRUE);
+                InvalidateRect(hWnd, NULL, FALSE);
             }
         }
         break;
@@ -211,16 +288,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SelectObject(hdc, osPen);
             DeleteObject(bgPen);
 
+            ///플레이어 그리기
             HBRUSH playerBrush = CreateSolidBrush(RGB(200, 150, 80));
             FillRect(hdc, &player, playerBrush);
             DeleteObject(playerBrush); ///플레이어 브러시 자원 해제
 
+            ///발판 그리기
+            HBRUSH platformBrush = CreateSolidBrush(RGB(120,60,80));
+            FillRect(hdc, &platforms.position, platformBrush);
+            DeleteObject(platformBrush);
 
 
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
+        ///SET_CHECK_GRAVITY_TIMER 제거
+        KillTimer(hWnd, SET_CHECK_GRAVITY_TIMER);
         PostQuitMessage(0);
         break;
     default:
