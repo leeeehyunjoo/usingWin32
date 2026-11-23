@@ -3,6 +3,8 @@
 #include "framework.h"
 #include "jumpjump.h"
 #include <vector>
+#include <time.h>
+#include <random>
 
 #define MAX_LOADSTRING 100
 #define SET_CHECK_GRAVITY_TIMER 1
@@ -139,6 +141,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 float gravity = 0.5;
 float velocityY = 0;
 
+///게임상태 변수 선언 true->실행중 false->게임오버
+bool gameRunning = true;
+
 ///배경색을 칠하기 위한 변수 선언
 RECT bgPaint;
 
@@ -202,6 +207,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_TIMER:
     {
+        ///게임 상태 확인. false면 WndProc를 빠져나온다
+        if (gameRunning == false) {
+            return 0;
+        }
+
+        ///중력 적용 전의 plater bottom 값 저장
+        int savedBottom = player.bottom;
         ///SET_CHECK_GRAVITY_TIMER에서 수행할 작업
         velocityY += gravity;
 
@@ -214,7 +226,31 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             player.bottom = bg.bottom - 2;
             player.top = player.bottom - 50;
             velocityY = 0;
+            gameRunning = false;
         }
+
+
+        ///player가 platform과 충돌하는지 판단합니다
+        ///
+        ///플레이어가 발판에 착지했는지 확인
+        if (velocityY > 0){
+                for(int i=0;i<platforms.size();i++){
+                    //MessageBox(hWnd, L"겹쳤다", L"플레이어와 발판", MB_OK);
+                    if(savedBottom<=platforms[i].position.top && 
+                        player.bottom>=platforms[i].position.top && 
+                        player.left<platforms[i].position.right &&
+                        player.right>platforms[i].position.left)
+                    { 
+                        player.bottom = platforms[i].position.top;
+                        player.top = player.bottom - 50;
+                        velocityY = -10;
+                    }
+                    else {
+                        //MessageBox(hWnd, L"겹치지 않았다", L"플레이어와 발판", MB_OK);
+                    }
+                }
+        }
+
 
         InvalidateRect(hWnd, NULL, FALSE);
         
@@ -230,8 +266,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //AddPlatform(400, 600, 0);
         //AddPlatform(290, 230, 0);
         //AddPlatform(550, 350, 0);
-        for (int i = 0; i < 5; i++) {
+
+        //시드 초기화
+        srand(time(NULL));
+
+        ///type0의 발판을 5~10개 중에 만든다
+        for (int i = 0; i < rand() % 10+5; i++) {
             AddPlatform(rand() % 581 + 50, rand() % 631 + 50, 0);
+        }
+
+        ///type1의 발판을 5~10개 중에 만든다
+        for (int i = 0; i < rand() % 10 + 5; i++) {
+            AddPlatform(rand() % 541 + 80, rand() % 631 + 80, 1);
+        }
+
+        ///type2의 발판을 5~10개 중에 만든다
+        for (int i = 0; i < rand() % 10 + 5; i++) {
+            AddPlatform(rand() % 531 + 83, rand() % 631 + 50, 2);
         }
     }
     break;
@@ -241,6 +292,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
         case VK_LEFT:
         {
+            if (gameRunning == false)
+                return 0;
             ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
             ///bg의 x좌표보다 작을 수 없다
             if (bg.left < player.left) {
@@ -255,6 +308,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case VK_RIGHT:
         {
+            if (gameRunning == false)
+                return 0;
+
             ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
             ///bg의 x좌표보다 클 수 없다
             if (bg.right > player.right) {
@@ -316,13 +372,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             DeleteObject(playerBrush); ///플레이어 브러시 자원 해제
 
             ///발판 그리기
-            HBRUSH platformBrush = CreateSolidBrush(RGB(120,60,80));
+            HBRUSH platformBrushType0 = CreateSolidBrush(RGB(120,60,80));
+            HBRUSH platformBrushType1 = CreateSolidBrush(RGB(40, 140, 200));
+            HBRUSH platformBrushType2 = CreateSolidBrush(RGB(15, 255, 35));
             //FillRect(hdc, &platforms.position, platformBrush);
             for (int i = 0; i < platforms.size(); i++) {
-                FillRect(hdc, &platforms[i].position, platformBrush);
-            }
-            DeleteObject(platformBrush);
+                if(platforms[i].type == 0)
+                FillRect(hdc, &platforms[i].position, platformBrushType0);
+                
+                if(platforms[i].type==1)
+                FillRect(hdc, &platforms[i].position, platformBrushType1);
 
+                if(platforms[i].type==2)
+                FillRect(hdc, &platforms[i].position, platformBrushType2);
+            }
+            DeleteObject(platformBrushType0);
+            DeleteObject(platformBrushType1);
+            DeleteObject(platformBrushType2);
+
+
+
+            ///게임오버 알리기
+            if (gameRunning == false)
+                TextOut(hdc, 250, 400, L"게임 오버 ! 다음 기회를 노려보세요 ♬", 22);
 
             EndPaint(hWnd, &ps);
         }
