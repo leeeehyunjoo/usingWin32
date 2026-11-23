@@ -182,10 +182,17 @@ void AddPlatform(int x, int y, int type)
 
     /// 2. position 구성
     Platform newPlatform;
-
+    newPlatform.position.left = x;
+    newPlatform.position.top = y;
+    newPlatform.position.right = x + width;
+    newPlatform.position.bottom = y + height;
+    
+    newPlatform.type = type;
 
 
     // 3. platforms에 추가
+    platforms.push_back(newPlatform);
+    
 }
 
 
@@ -211,6 +218,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         InvalidateRect(hWnd, NULL, FALSE);
         
+    }
+    break;
+
+    case WM_CREATE:
+    {
+        ///게임 영역 오른쪽 경계=700
+        ///type0의 발판 너비는 70이므로 AddPlatform의 x 좌표는 최대 630까지 가능
+        //AddPlatform(250, 500, 0);
+        //AddPlatform(300, 150, 0);
+        //AddPlatform(400, 600, 0);
+        //AddPlatform(290, 230, 0);
+        //AddPlatform(550, 350, 0);
+        for (int i = 0; i < 5; i++) {
+            AddPlatform(rand() % 581 + 50, rand() % 631 + 50, 0);
+        }
     }
     break;
     case WM_KEYDOWN:
@@ -295,7 +317,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             ///발판 그리기
             HBRUSH platformBrush = CreateSolidBrush(RGB(120,60,80));
-            FillRect(hdc, &platforms.position, platformBrush);
+            //FillRect(hdc, &platforms.position, platformBrush);
+            for (int i = 0; i < platforms.size(); i++) {
+                FillRect(hdc, &platforms[i].position, platformBrush);
+            }
             DeleteObject(platformBrush);
 
 
