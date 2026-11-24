@@ -144,11 +144,17 @@ float velocityY = 0;
 ///게임상태 변수 선언 true->실행중 false->게임오버
 bool gameRunning = true;
 
+///스크롤상태 변수 선언 true->스크롤중 false->스크롤하지않음
+bool isScroll = false;
+
 ///배경색을 칠하기 위한 변수 선언
 RECT bgPaint;
 
 ///실제 게임이 운영될 백그라운드 설정
 RECT bg = { 50,50,700,700 };
+
+///플레이어가 움직이면서 백그라운드가 스크롤될 기준점
+RECT bgScroll = { 50,250,700,700 };
 
 ///플레이어 구조체 설정
 RECT player = { 350,400,400,450 };
@@ -160,6 +166,7 @@ struct Platform
 {
     RECT position;
     int type;       ///0=일반발판 1=이동발판 2=깨짐발판
+    int movingDir;  ///x좌표의 이동
 };
 
 std::vector<Platform> platforms;
@@ -191,6 +198,16 @@ void AddPlatform(int x, int y, int type)
     newPlatform.position.top = y;
     newPlatform.position.right = x + width;
     newPlatform.position.bottom = y + height;
+
+    ///1움직인다 0움직이지 않는다
+    if (type == 1)
+    {
+        newPlatform.movingDir = 1;
+    }
+    else 
+    {
+        newPlatform.movingDir = 0;
+    }
     
     newPlatform.type = type;
 
@@ -198,6 +215,17 @@ void AddPlatform(int x, int y, int type)
     // 3. platforms에 추가
     platforms.push_back(newPlatform);
     
+}
+
+/// 최소 길 보장(y좌표는 일정 간격을 둔다. 플레이어가 이동할 수 있게 하기 위함)
+void CreateBasicPath()
+{
+    int y = 100;
+    for (int i = 0; i < 6; i++)
+    {
+        AddPlatform(rand() % 581 + 50, y- 50, 0);
+        y -= 110;
+    }
 }
 
 
@@ -212,43 +240,141 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             return 0;
         }
 
+        if (bgScroll.top >= player.top)
+        {
+            isScroll = true;
+        }
+            for (int i = 0; i < platforms.size(); i++)
+            {
+                ///플레이어 상승중의 조건일 때
+                if (velocityY < 0)
+                {
+                    if (player.top <= platforms[i].position.top)
+                    {
+                    }
+
+                
+                }
+                ///플레이어 하강중의 조건일 때
+                else if (velocityY > 0)
+                {
+
+                }
+                /////스크롤 시 5만큼 이동한다
+                //platforms[i].position.top += 5;
+                //platforms[i].position.bottom += 5;
+            }
+
+
         ///중력 적용 전의 plater bottom 값 저장
         int savedBottom = player.bottom;
+
         ///SET_CHECK_GRAVITY_TIMER에서 수행할 작업
         velocityY += gravity;
 
-        if (player.bottom + (int)velocityY < bg.bottom - 2) {
-            player.top += (int)velocityY;
-            player.bottom += (int)velocityY;
+        ///이번 프레임의 예상 위치
+        int nextTop = player.top + (int)velocityY;
+        int nextBottom = player.bottom + (int)velocityY;
+
+        ///스크롤이 시작되지 않은 상태에서 바닥에 도달했는지 판단
+        if (isScroll == false)
+        {
+            ///플레이어의 예상 bottom이 바닥 경계에 도달했는지 확인
+            if (nextBottom >= bg.bottom - 2)
+            {
+                ///플레이어가 바닥에 정확히 닿도록 위치 보정
+                nextBottom = bg.bottom - 2;
+                nextTop = nextBottom - 50;
+
+                ///플레이어의 낙하 속도를 초기화
+                velocityY = 0;
+
+                ///게임오버 상태로 변경
+                gameRunning = false;
+            }
         }
-        else {
-            // 경계선에 정확히 맞춤
-            player.bottom = bg.bottom - 2;
-            player.top = player.bottom - 50;
-            velocityY = 0;
-            gameRunning = false;
+
+        if (bgScroll.top >= nextTop && velocityY < 0)
+        {
+            ///플레이어가 기준점 위로 올라가려는 경우
+            int scrollAmount = bgScroll.top - nextTop;
+
+            player.top = bgScroll.top;
+            player.bottom = bgScroll.top + 50;
+
+            ///발판들을 아래로 이동
+            for (int i = 0; i < platforms.size(); i++)
+            {
+                platforms[i].position.top += scrollAmount;
+                platforms[i].position.bottom += scrollAmount;
+            }
         }
+        else
+        {
+            ///기존 중력 이동
+            player.top = nextTop;
+            player.bottom = nextBottom;
+        }
+
+        /////스크롤이 시작되지 않은 상태
+        //if (player.bottom + (int)velocityY < bg.bottom - 2) {
+        //    player.top += (int)velocityY;
+        //    player.bottom += (int)velocityY;
+        //}
+        //else {
+        //    player.bottom = bg.bottom - 2;
+        //    player.top = player.bottom - 50;
+        //    velocityY = 0;
+        //    gameRunning = false;
+        //}
 
 
         ///player가 platform과 충돌하는지 판단합니다
-        ///
         ///플레이어가 발판에 착지했는지 확인
-        if (velocityY > 0){
-                for(int i=0;i<platforms.size();i++){
-                    //MessageBox(hWnd, L"겹쳤다", L"플레이어와 발판", MB_OK);
-                    if(savedBottom<=platforms[i].position.top && 
-                        player.bottom>=platforms[i].position.top && 
-                        player.left<platforms[i].position.right &&
-                        player.right>platforms[i].position.left)
-                    { 
-                        player.bottom = platforms[i].position.top;
-                        player.top = player.bottom - 50;
-                        velocityY = -10;
+
+        if (velocityY > 0) {
+            for (int i = 0; i < platforms.size(); i++) {
+
+                ///발판과 충돌 판정
+                if (savedBottom <= platforms[i].position.top &&
+                    player.bottom >= platforms[i].position.top &&
+                    player.left < platforms[i].position.right &&
+                    player.right > platforms[i].position.left)
+                {
+                    ///착지 처리
+                    player.bottom = platforms[i].position.top;
+                    player.top = player.bottom - 50;
+                    velocityY = -13;
+
+                    ///깨짐 발판이면 제거
+                    if (platforms[i].type == 2) {
+                        platforms.erase(platforms.begin() + i);
+                        i--;
                     }
-                    else {
-                        //MessageBox(hWnd, L"겹치지 않았다", L"플레이어와 발판", MB_OK);
-                    }
+                    break;
                 }
+            }
+        }
+
+        ///type1인 발판을 움직이도록 구현
+
+        for (int i = 0; i < platforms.size(); i++) {
+            if (platforms[i].type == 1) {
+
+                ///발판 이동
+                platforms[i].position.right += platforms[i].movingDir;
+                platforms[i].position.left += platforms[i].movingDir;
+
+                ///오른쪽 경계에 도달하면 왼쪽으로 방향 변경
+                if (platforms[i].position.right >= bg.right) {
+                    platforms[i].movingDir = -2;
+                }
+
+                ///왼쪽 경계에 도달하면 오른쪽으로 방향 변경
+                if (platforms[i].position.left <= bg.left) {
+                    platforms[i].movingDir = 2;
+                }
+            }
         }
 
 
