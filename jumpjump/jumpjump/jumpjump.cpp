@@ -141,8 +141,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 float gravity = 0.5;
 float velocityY = 0;
 
-///게임상태 변수 선언 true->실행중 false->게임오버
-bool gameRunning = true;
+///게임상태 변수 선언 0->실행중 1->게임일시중지 2->게임오버
+int gameRunning = 0;
 
 ///스크롤상태 변수 선언 true->스크롤중 false->스크롤하지않음
 bool isScroll = false;
@@ -157,7 +157,7 @@ RECT bg = { 50,50,700,700 };
 RECT bgScroll = { 50,250,700,700 };
 
 ///플레이어 구조체 설정
-RECT player = { 350,400,400,450 };
+RECT player = { 350,600,400,650 };
 
 ///발판 구조체 설정하기
 //RECT platform = { 250, 500, 450, 520 };
@@ -220,7 +220,8 @@ void AddPlatform(int x, int y, int type)
 /// 최소 길 보장(y좌표는 일정 간격을 둔다. 플레이어가 이동할 수 있게 하기 위함)
 void CreateBasicPath()
 {
-    int y = 100;
+    AddPlatform(360, 680, 0);
+    int y = 600;
     for (int i = 0; i < 6; i++)
     {
         AddPlatform(rand() % 581 + 50, y- 50, 0);
@@ -235,8 +236,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
     case WM_TIMER:
     {
-        ///게임 상태 확인. false면 WndProc를 빠져나온다
-        if (gameRunning == false) {
+        ///게임이 실행 중이 아니면 타이머 작업을 중단
+        if (gameRunning != 0) {
             return 0;
         }
 
@@ -244,26 +245,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             isScroll = true;
         }
-            for (int i = 0; i < platforms.size(); i++)
-            {
-                ///플레이어 상승중의 조건일 때
-                if (velocityY < 0)
-                {
-                    if (player.top <= platforms[i].position.top)
-                    {
-                    }
-
-                
-                }
-                ///플레이어 하강중의 조건일 때
-                else if (velocityY > 0)
-                {
-
-                }
-                /////스크롤 시 5만큼 이동한다
-                //platforms[i].position.top += 5;
-                //platforms[i].position.bottom += 5;
-            }
 
 
         ///중력 적용 전의 plater bottom 값 저장
@@ -290,7 +271,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 velocityY = 0;
 
                 ///게임오버 상태로 변경
-                gameRunning = false;
+                gameRunning = 2;
             }
         }
 
@@ -396,6 +377,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         //시드 초기화
         srand(time(NULL));
 
+        CreateBasicPath();
+
         ///type0의 발판을 5~10개 중에 만든다
         for (int i = 0; i < rand() % 10+5; i++) {
             AddPlatform(rand() % 581 + 50, rand() % 631 + 50, 0);
@@ -418,7 +401,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
         case VK_LEFT:
         {
-            if (gameRunning == false)
+            if (gameRunning != 0)
                 return 0;
             ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
             ///bg의 x좌표보다 작을 수 없다
@@ -434,7 +417,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case VK_RIGHT:
         {
-            if (gameRunning == false)
+            if (gameRunning != 0)
                 return 0;
 
             ///플레이어는 백그라운드 영역 내에서만 이동이 가능하다
@@ -448,8 +431,41 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+
+        case VK_ESCAPE:
+        {
+            ///게임이 실행 중일 때만 일시정지
+            if (gameRunning == 0)
+            {
+                ///게임 상태를 일시정지로 변경
+                gameRunning = 1;
+
+                ///화면을 다시 그리도록 요청
+                InvalidateRect(hWnd, NULL, FALSE);
+            }
         }
         break;
+
+        case VK_SPACE:
+        {
+            ///게임 일시정지 상태일 경우 이어하기
+            if (gameRunning == 1)
+            {
+                ///게임 실행 상태로 변경
+                gameRunning = 0;
+
+                ///화면을 다시 그리도록 요청
+                InvalidateRect(hWnd, NULL, FALSE);
+            }
+
+            ///게임 오버 상태일 경우
+            else if (gameRunning == 2)
+            {
+                ///게임 재시작은 추후 초기화 함수 구현 시 연결
+            }
+        }
+        break;
+        }
     }
     break;
     case WM_COMMAND:
@@ -517,10 +533,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             DeleteObject(platformBrushType2);
 
 
+            ///게임 일시정지 알리기
+            if (gameRunning == 1)
+            {
+                TextOut(hdc, 250, 250, L"일시정지", 4);
+                TextOut(hdc, 250, 300, L"<space를 눌러 이어하기>", 16);
+            }
 
             ///게임오버 알리기
-            if (gameRunning == false)
+            if (gameRunning == 2)
+            {
                 TextOut(hdc, 250, 400, L"게임 오버 ! 다음 기회를 노려보세요 ♬", 22);
+            }
 
             EndPaint(hWnd, &ps);
         }
