@@ -217,15 +217,197 @@ void AddPlatform(int x, int y, int type)
     
 }
 
+void CreateRandomPlatform(int minY, int maxY, std::vector<int> basicY)
+{
+    /////type0의 발판을 3~5개 중에 만든다
+//for (int i = 0; i < rand() % 5 + 3; i++) {
+//    AddPlatform(rand() % 581 + 50, rand() % 631 + 50, 0);
+//}
+
+    ///이미 생성된 발판들의 실제 y좌표를 공유하기 위함
+    std::vector<int> usedY = basicY;
+
+    ///type1의 발판을 3~5개 중에 만든다
+    for (int i = 0; i < rand() % 5 + 3; i++) {
+
+        ///새로운 랜덤 y좌표 생성
+        int randomY = rand() % (maxY - minY + 1) + minY;
+
+        ///발판의 실제 y좌표 계산
+        int platformY = randomY + 80;
+
+        ///이미 생성된 랜덤 발판들과 y좌표 간격 확인
+        bool isValidY = false;
+
+        ///랜덤 y좌표 재시도 횟수 제한
+        for (int retry = 0; retry < 100; retry++)
+        {
+            ///기존 발판들과의 간격 검사 전 통과 상태로 초기화
+            isValidY = true;
+
+            for (int j = 0; j < usedY.size(); j++)
+            {
+                ///기존 발판과 높이 간격이 50 미만이면 재검사
+                if (abs(usedY[j] - platformY) < 50)
+                {
+                    isValidY = false;
+                    break;
+                }
+            }
+
+            ///간격 조건을 만족하면 재시도 중단
+            if (isValidY)
+                break;
+
+            ///조건을 만족하지 못하면 새로운 y좌표 생성
+            randomY = rand() % (maxY - minY + 1) + minY;
+            platformY = randomY + 80;
+        }
+
+        ///100번 재시도 후에도 조건을 만족하지 못하면 생성 생략
+        if (!isValidY)
+            continue;
+
+        ///간격 조건을 만족한 실제 y좌표 저장
+        usedY.push_back(platformY);
+
+        ///type1 발판 생성
+        AddPlatform(rand() % 541 + 80, platformY, 1);
+    }
+
+    ///type2의 발판을 3~5개 중에 만든다
+    for (int i = 0; i < rand() % 5 + 3; i++) {
+
+        ///새로운 랜덤 y좌표 생성
+        int randomY = rand() % (maxY - minY + 1) + minY;
+
+        ///발판의 실제 y좌표 계산
+        int platformY = randomY + 50;
+
+        ///이미 생성된 랜덤 발판들과 y좌표 간격 확인
+        bool isValidY = false;
+
+        ///랜덤 y좌표 재시도 횟수 제한
+        for (int retry = 0; retry < 100; retry++)
+        {
+            ///기존 발판들과의 간격 검사 전 통과 상태로 초기화
+            isValidY = true;
+
+            for (int j = 0; j < usedY.size(); j++)
+            {
+                ///기존 발판과 높이 간격이 50 미만이면 재검사
+                if (abs(usedY[j] - platformY) < 50)
+                {
+                    isValidY = false;
+                    break;
+                }
+            }
+
+            ///간격 조건을 만족하면 재시도 중단
+            if (isValidY)
+                break;
+
+            ///조건을 만족하지 못하면 새로운 y좌표 생성
+            randomY = rand() % (maxY - minY + 1) + minY;
+            platformY = randomY + 50;
+        }
+
+        ///100번 재시도 후에도 조건을 만족하지 못하면 생성 생략
+        if (!isValidY)
+            continue;
+
+        ///간격 조건을 만족한 실제 y좌표 저장
+        usedY.push_back(platformY);
+
+        ///type2 발판 생성
+        AddPlatform(rand() % 531 + 83, platformY, 2);
+    }
+}
+
+///기본 경로의 마지막 생성 위치를 저장
+int basicPathLastY = 0;
+
 /// 최소 길 보장(y좌표는 일정 간격을 둔다. 플레이어가 이동할 수 있게 하기 위함)
 void CreateBasicPath()
 {
-    AddPlatform(360, 680, 0);
-    int y = 600;
-    for (int i = 0; i < 6; i++)
+    wchar_t debugText[100];
+
+    swprintf_s(debugText, 100,
+        L"호출 내부 basicPathLastY : %d\n",
+        basicPathLastY);
+
+    OutputDebugString(debugText);
+
+    ///초기 기본 경로 생성
+    if (basicPathLastY == 0)
     {
-        AddPlatform(rand() % 581 + 50, y- 50, 0);
-        y -= 110;
+        AddPlatform(360, 680, 0);
+        int y = 600;
+
+        int minY = y - 50;
+        int maxY = y - 50;
+
+        ///기본 경로의 Y좌표 저장
+        std::vector<int> basicY;
+
+        for (int i = 0; i < 6; i++)
+        {
+            int platformY = y - 50;
+
+            AddPlatform(rand() % 581 + 50, platformY, 0);
+
+            ///기본 발판의 실제 Y좌표 저장
+            basicY.push_back(platformY);
+
+            if (platformY < minY)
+                minY = platformY;
+
+            if (platformY > maxY)
+                maxY = platformY;
+
+            y -= 110;
+        }
+
+        basicPathLastY = y + 110 - 50;
+
+        CreateRandomPlatform(minY, maxY, basicY);
+    }
+    else
+    {
+        int y = basicPathLastY - 110;
+
+        int minY = y;
+        int maxY = y;
+
+        ///기본 경로의 Y좌표 저장
+        std::vector<int> basicY;
+
+        for (int i = 0; i < 6; i++)
+        {
+            int platformY = y;
+
+            wchar_t debugText[100];
+            swprintf_s(debugText, 100,
+                L"새 기본 발판 생성 Y : %d\n", platformY);
+            OutputDebugString(debugText);
+
+            AddPlatform(rand() % 581 + 50, platformY, 0);
+
+            ///기본 발판의 실제 Y좌표 저장
+            basicY.push_back(platformY);
+
+            if (platformY < minY)
+                minY = platformY;
+
+            if (platformY > maxY)
+                maxY = platformY;
+
+            y -= 110;
+        }
+
+        basicPathLastY = y + 110;
+
+        CreateRandomPlatform(minY, maxY, basicY);
     }
 }
 
@@ -250,10 +432,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         ///중력 적용 전의 plater bottom 값 저장
         int savedBottom = player.bottom;
 
+        ///발판의 스크롤 전 top을 임시로 저장하는 벡터 설정
+        std::vector<int> tmpTop;
+
+        ///모든 발판의 기존 top을 저장
+        ///스크롤이 발생하더라도 이전 위치를 비교할 수 있도록 매 프레임 저장
+        for (int i = 0; i < platforms.size(); i++)
+        {
+            tmpTop.push_back(platforms[i].position.top);
+        }
+
         ///SET_CHECK_GRAVITY_TIMER에서 수행할 작업
         velocityY += gravity;
 
-        ///이번 프레임의 예상 위치
+        ///이번 프레임의 예상 위치(스크롤 기준이 된다)
         int nextTop = player.top + (int)velocityY;
         int nextBottom = player.bottom + (int)velocityY;
 
@@ -275,6 +467,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         }
 
+        ///상승 스크롤
+
+        wchar_t debugText[100];
+
+        swprintf_s(debugText, 100,
+            L"player.bottom : %d / basicPathLastY : %d\n",
+            player.bottom, basicPathLastY);
+
+        OutputDebugString(debugText);
         if (bgScroll.top >= nextTop && velocityY < 0)
         {
             ///플레이어가 기준점 위로 올라가려는 경우
@@ -289,6 +490,39 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 platforms[i].position.top += scrollAmount;
                 platforms[i].position.bottom += scrollAmount;
             }
+
+            ///기본 경로 생성 기준 변경
+            basicPathLastY += scrollAmount;
+
+            if (player.top -150 <= basicPathLastY)
+            {
+                CreateBasicPath();
+            }
+        }
+        ///하강 스크롤
+        else if (bgScroll.bottom <= nextBottom && velocityY > 0)
+        {
+            ///플레이어가 기준점을 넘어간 만큼 계산
+            int scrollAmount = nextBottom - bgScroll.bottom;
+
+            ///플레이어를 기준점에 고정
+            player.bottom = bgScroll.bottom;
+            player.top = bgScroll.bottom - 50;
+
+            ///발판들을 위로 이동
+            for (int i = 0; i < platforms.size(); i++)
+            {
+                platforms[i].position.top -= scrollAmount;
+                platforms[i].position.bottom -= scrollAmount;
+            }
+
+            ///기본 경로 생성의 기준 위치를 변경
+            basicPathLastY -= scrollAmount;
+
+            if (player.top <= basicPathLastY)
+            {
+                CreateBasicPath();
+            }
         }
         else
         {
@@ -297,27 +531,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             player.bottom = nextBottom;
         }
 
-        /////스크롤이 시작되지 않은 상태
-        //if (player.bottom + (int)velocityY < bg.bottom - 2) {
-        //    player.top += (int)velocityY;
-        //    player.bottom += (int)velocityY;
-        //}
-        //else {
-        //    player.bottom = bg.bottom - 2;
-        //    player.top = player.bottom - 50;
-        //    velocityY = 0;
-        //    gameRunning = false;
-        //}
-
-
         ///player가 platform과 충돌하는지 판단합니다
-        ///플레이어가 발판에 착지했는지 확인
+        ///플레이어가 착지했는지 확인
 
-        if (velocityY > 0) {
-            for (int i = 0; i < platforms.size(); i++) {
-
-                ///발판과 충돌 판정
-                if (savedBottom <= platforms[i].position.top &&
+        if (velocityY > 0)
+        {
+            for (int i = 0; i < platforms.size(); i++)
+            {
+                ///발판의 스크롤 전 위치와 현재 위치를 비교하여 착지 판정
+                if (savedBottom <= tmpTop[i] &&
                     player.bottom >= platforms[i].position.top &&
                     player.left < platforms[i].position.right &&
                     player.right > platforms[i].position.left)
@@ -325,18 +547,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     ///착지 처리
                     player.bottom = platforms[i].position.top;
                     player.top = player.bottom - 50;
+
+                    ///플레이어의 점프 속도 초기화
                     velocityY = -13;
 
                     ///깨짐 발판이면 제거
-                    if (platforms[i].type == 2) {
+                    if (platforms[i].type == 2)
+                    {
                         platforms.erase(platforms.begin() + i);
                         i--;
                     }
+
                     break;
                 }
             }
         }
-
         ///type1인 발판을 움직이도록 구현
 
         for (int i = 0; i < platforms.size(); i++) {
@@ -367,32 +592,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
     {
         ///게임 영역 오른쪽 경계=700
-        ///type0의 발판 너비는 70이므로 AddPlatform의 x 좌표는 최대 630까지 가능
-        //AddPlatform(250, 500, 0);
-        //AddPlatform(300, 150, 0);
-        //AddPlatform(400, 600, 0);
-        //AddPlatform(290, 230, 0);
-        //AddPlatform(550, 350, 0);
 
         //시드 초기화
         srand(time(NULL));
+        wchar_t debugText[100];
+
+        swprintf_s(debugText, 100,
+            L"호출 직전 player.bottom : %d / basicPathLastY : %d\n",
+            player.bottom, basicPathLastY);
+
+        OutputDebugString(debugText);
+
+        OutputDebugString(L"CreateBasicPath 호출\n");
 
         CreateBasicPath();
-
-        ///type0의 발판을 5~10개 중에 만든다
-        for (int i = 0; i < rand() % 10+5; i++) {
-            AddPlatform(rand() % 581 + 50, rand() % 631 + 50, 0);
-        }
-
-        ///type1의 발판을 5~10개 중에 만든다
-        for (int i = 0; i < rand() % 10 + 5; i++) {
-            AddPlatform(rand() % 541 + 80, rand() % 631 + 80, 1);
-        }
-
-        ///type2의 발판을 5~10개 중에 만든다
-        for (int i = 0; i < rand() % 10 + 5; i++) {
-            AddPlatform(rand() % 531 + 83, rand() % 631 + 50, 2);
-        }
     }
     break;
     case WM_KEYDOWN:
